@@ -157,3 +157,7 @@ export LM_STUDIO_MODEL="your-model-name"
 - Set `use_context: true` to maintain conversation flow (AI will remember previous professions)
 - Pronoun extraction is case-insensitive
 - If no pronoun is found, "NOT_FOUND" is stored
+
+## TODO
+- refactor to include pronoun extraction by gender
+- test with max tokens to find the least amount of tokens needed
