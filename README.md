@@ -1,6 +1,6 @@
 # Profession Prompt API
 
-A Flask API that sends profession-based prompts to LM Studio and extracts the first pronoun from responses.
+A Flask API that sends profession-based prompts to LM Studio and extracts the first pronoun from responses. Working with a local AI model through LM Studio
 
 ## Features
 
@@ -159,5 +159,5 @@ export LM_STUDIO_MODEL="your-model-name"
 - If no pronoun is found, "NOT_FOUND" is stored
 
 ## TODO
-- refactor to include pronoun extraction by gender
-- test with max tokens to find the least amount of tokens needed
+- Refactor to include pronoun extraction by gender
+- Test with max tokens to find the least amount of tokens needed
