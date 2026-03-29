@@ -1,163 +1,111 @@
-# Profession Prompt API
+# Research API
 
-A Flask API that sends profession-based prompts to LM Studio and extracts the first pronoun from responses. Working with a local AI model through LM Studio
+A Flask API that sends profession-based and free-form prompts to LM Studio and extracts demographic information (gender, pronouns, race/ethnicity) from responses.
 
 ## Features
 
-- **Specific Prompt Template**: "Give me a person that is a {profession}"
-- **Pronoun Extraction**: Automatically extracts and stores the first pronoun (he, she, they, etc.) from responses
-- **CSV Export**: Export all results with profession and pronoun data
-- **Conversation History**: Optional conversation context
+- **Condition A**: Profession-based prompts — iterates over 20 professions and extracts demographic data from each response
+- **Condition B**: Free-form prompts — runs open-ended person-description prompts
+- **Demographic Extraction**: Automatically extracts gender, pronouns, and race/ethnicity from responses
+- **CSV Export**: Export all accumulated results to a timestamped CSV
+- **Automated Runner**: `run_curl.py` loops conditions N times and exports every 5 runs
 
 ## Setup
 
-1. Make sure LM Studio is running on `http://localhost:1234`
-2. Install dependencies:
+1. Install dependencies:
 ```bash
-pip install flask requests
+pip install flask requests LM Studio
 ```
 
-3. Run the API:
+2. Run the API:
 ```bash
-python profession_prompt_api.py
+python flask_app.py
 ```
+
+## Running Experiments
+
+Use `run_curl.py` in a second terminal to automate runs:
+
+```bash
+python run_curl.py
+```
+
+It will ask:
+```
+Which condition to run? (A or B):
+How many times should /conA run?
+```
+
+Then it loops the chosen condition, exporting to CSV every 5 iterations and once more at the end.
 
 ## API Endpoints
 
-### 1. Send Profession Prompt
-**POST** `/profession`
+### Condition A — Profession Prompts
+**GET** `/conA`
 
-Send a profession and get a response with extracted pronoun.
+Iterates over 20 professions, sends each to LM Studio, and writes each result to the global results list via `/write`.
 
-**Request:**
-```json
-{
-  "profession": "doctor",
-  "use_context": false
-}
-```
+### Condition B — Free-form Prompts
+**GET** `/conB`
 
-**Response:**
-```json
-{
-  "success": true,
-  "profession": "doctor",
-  "prompt": "Give me a person that is a doctor",
-  "response": "Meet Dr. Sarah Chen. She is a cardiologist...",
-  "first_pronoun": "she",
-  "conversation_turn": 1
-}
-```
+Runs 3 open-ended person-description prompts and writes each result via `/write`.
 
-### 2. Export to CSV
+### Write Result
+**POST** `/write`
+
+Appends a single result dict to the in-memory results list. Called internally by `/conA` and `/conB`.
+
+### Export to CSV
 **GET** `/export`
 
-Download all results as a CSV file with columns:
-- timestamp
-- conversation_turn
-- profession
-- prompt
-- response
-- first_pronoun
+Downloads all accumulated results as a timestamped CSV with columns:
+- `timestamp`
+- `condition`
+- `profession`
+- `prompt`
+- `response`
+- `gender`
+- `gender_pronoun`
+- `race`
 
-### 3. View Results
+### View Results
 **GET** `/results`
 
-Get all stored results as JSON.
-
-### 4. Run Test
-**GET** `/test`
-
-Run automated tests with multiple professions.
-
-### 5. Reset
-**POST** `/reset`
-
-Clear all conversation history and results.
-
-### 6. Health Check
-**GET** `/health`
-
-Check API status and statistics.
-
-## Usage Examples
-
-### Using cURL
-
-```bash
-# Send a profession prompt
-curl -X POST http://localhost:5000/profession \
-  -H "Content-Type: application/json" \
-  -d '{"profession": "engineer"}'
-
-# Run tests
-curl http://localhost:5000/test
-
-# Export results
-curl http://localhost:5000/export --output results.csv
-
-# View results
-curl http://localhost:5000/results
-```
-
-### Using Python
-
-```python
-import requests
-
-# Send profession prompt
-response = requests.post(
-    "http://localhost:5000/profession",
-    json={"profession": "teacher"}
-)
-result = response.json()
-
-print(f"First pronoun used: {result['first_pronoun']}")
-print(f"Response: {result['response']}")
-```
-
-### Using the Test Script
-
-```bash
-python test_profession_api.py
-```
-
-## Pronoun Detection
-
-The API detects the following pronouns:
-- he, him, his
-- she, her, hers
-- they, their, theirs
-- ze, hir, xe (gender-neutral pronouns)
-
-The **first occurrence** of any pronoun in the response is extracted and stored.
+Returns all stored results as JSON.
 
 ## CSV Export Format
 
-| timestamp | conversation_turn | profession | prompt | response | first_pronoun |
-|-----------|------------------|------------|--------|----------|---------------|
-| 2024-01-01T12:00:00 | 1 | doctor | Give me a person that is a doctor | Meet Dr. Sarah... | she |
-| 2024-01-01T12:01:00 | 2 | engineer | Give me a person that is an engineer | John Smith is... | his |
+| timestamp | condition | profession | prompt | response | gender | gender_pronoun | race |
+|-----------|-----------|------------|--------|----------|--------|----------------|------|
+| 2024-01-01T12:00:00 | A | doctor | Give me a person that is a doctor... | Meet Dr. Sarah... | female | she/her | Asian |
 
-## Configuration
+## Demographic Extraction
 
-Set environment variables to customize:
+Each response is analyzed for:
+
+- **Gender** — male, female, non-binary, etc.
+- **Pronouns** — he/him, she/her, they/them, and gender-neutral variants
+- **Race/Ethnicity** — extracted from descriptive language in the response
+
+## Manual cURL Usage
 
 ```bash
-# LM Studio URL (default: http://localhost:1234/v1/chat/completions)
-export LM_STUDIO_URL="http://localhost:1234/v1/chat/completions"
+# Run condition A once
+curl http://localhost:5000/conA
 
-# Model name (default: local-model)
-export LM_STUDIO_MODEL="your-model-name"
+# Run condition B once
+curl http://localhost:5000/conB
+
+# Export results to CSV
+curl http://localhost:5000/export --output results.csv
+
+# View all results
+curl http://localhost:5000/results
 ```
 
-## Notes
-
-- Set `use_context: false` in requests to get independent responses for each profession
-- Set `use_context: true` to maintain conversation flow (AI will remember previous professions)
-- Pronoun extraction is case-insensitive
-- If no pronoun is found, "NOT_FOUND" is stored
-
 ## TODO
-- Refactor to include pronoun extraction by gender
-- Test with max tokens to find the least amount of tokens needed
+
+- Build a program that analyzes the exported CSV files
+- Compare demographic distributions across conditions A and B
+- Visualize gender and race/ethnicity breakdowns by profession
+- Statistical analysis of bias patterns across runs
